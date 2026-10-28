@@ -27,6 +27,7 @@
 #include <utils/SortedVector.h>
 
 #include <hardware_legacy/AudioHardwareBase.h>
+#include <cutils/log.h>
 
 extern "C" {
 #include <linux/msm_audio.h>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project path="device/samsung/kylessopen" name="qcoretechgh/android_device_samsung_kylessopen" remote="github" revision="cm-9.1" />
+  <project path="vendor/samsung/kylessopen" name="qcoretechgh/android_vendor_samsung_kylessopen" remote="github" revision="cm-9.1" />
+  <project path="kernel/samsung/kylessopen" name="qcoretechgh/android_kernel_samsung_kylessopen" remote="github" revision="cm-9.1" />
+</manifest>

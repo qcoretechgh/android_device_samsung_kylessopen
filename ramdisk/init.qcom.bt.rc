@@ -1,5 +1,14 @@
-on boot
-    start bt_init
+service bccmd /system/bin/logwrapper /system/bin/bccmd -t bcsp -d /dev/ttyHS0 psload -r /etc/PSConfig_7820_rev26.psr
+    user root
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service hciattach /system/bin/logwrapper /system/bin/hciattach -n -p /dev/ttyHS0 bcsp 3000000 flow
+    user root
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
 
 on property:init.svc.bluetoothd=running
     start hci0_up
@@ -7,23 +16,14 @@ on property:init.svc.bluetoothd=running
 on property:init.svc.bluetoothd=stopped
     start hci0_down
 
-service bt_init /system/bin/logwrapper /system/bin/sh /system/etc/init.bt.sh
-    class main
-    user root
-    group bluetooth net_bt_admin system
-    disabled
-    oneshot
-
-service hci0_up /system/bin/logwrapper /system/xbin/hciconfig hci0 up
+service hci0_up /system/xbin/hciconfig hci0 up
     class main
     group bluetooth
     disabled
     oneshot
 
-service hci0_down /system/bin/logwrapper /system/xbin/hciconfig hci0 down
+service hci0_down /system/xbin/hciconfig hci0 down
     class main
     group bluetooth
     disabled
     oneshot
-
-import init.bluetooth.rc

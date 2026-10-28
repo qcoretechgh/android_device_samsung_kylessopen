@@ -1,0 +1,28 @@
+From 0ed92d99055132a5b0e2119c4b1459b712718b60 Mon Sep 17 00:00:00 2001
+From: Builder <builder@example.com>
+Date: Wed, 28 Oct 2026 12:18:27 +0200
+Subject: [PATCH] wifi: do not fail if fw path param is not available
+
+Change-Id: I082cf91fb2d765dfdf3b014d7cf38bbb6529a4ef
+---
+ wifi/wifi.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/wifi/wifi.c b/wifi/wifi.c
+index 119252b..eb303b3 100644
+--- a/wifi/wifi.c
++++ b/wifi/wifi.c
+@@ -993,8 +993,8 @@ int wifi_change_fw_path(const char *fwpath)
+ 
+     fd = open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY);
+     if (fd < 0) {
+-        LOGE("Failed to open wlan fw path param (%s)", strerror(errno));
+-        return -1;
++        LOGD("Wlan fw path param (%s) not found, skipping", WIFI_DRIVER_FW_PATH_PARAM);
++        return 0;
+     }
+     len = strlen(fwpath) + 1;
+     if (write(fd, fwpath, len) != len) {
+-- 
+2.56.0
+

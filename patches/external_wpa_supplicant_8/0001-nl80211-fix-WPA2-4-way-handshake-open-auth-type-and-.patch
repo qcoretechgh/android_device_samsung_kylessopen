@@ -1,0 +1,223 @@
+From 93976ec31e8ef1d8fc7ec25a8679253cbc6b9286 Mon Sep 17 00:00:00 2001
+From: Builder <builder@example.com>
+Date: Wed, 28 Oct 2026 12:18:27 +0200
+Subject: [PATCH] nl80211: fix WPA2 4-way handshake, open auth type, and
+ disable P2P mode on normal APs
+
+Change-Id: Idde8c6e6ff96270a2d5939a2707387352b163ff3
+---
+ src/drivers/driver_nl80211.c    | 84 +++++++++++++--------------------
+ wpa_supplicant/Android.mk       |  7 +++
+ wpa_supplicant/wpa_supplicant.c | 17 ++++---
+ 3 files changed, 47 insertions(+), 61 deletions(-)
+
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 7fb51fc..d4f8de2 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -1643,9 +1643,12 @@ static int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv)
+ 	if (info.ap_supported)
+ 		drv->capa.flags |= WPA_DRIVER_FLAGS_AP;
+ 
+-	if (info.auth_supported)
++	if (info.connect_supported) {
++		/* Driver/firmware handles association and connect directly (ath6kl FullMAC) */
++		wpa_printf(MSG_DEBUG, "nl80211: Using driver-based connect");
++	} else if (info.auth_supported) {
+ 		drv->capa.flags |= WPA_DRIVER_FLAGS_SME;
+-	else if (!info.connect_supported) {
++	} else {
+ 		wpa_printf(MSG_INFO, "nl80211: Driver does not support "
+ 			   "authentication/association or connect commands");
+ 		return -1;
+@@ -3138,7 +3141,7 @@ retry:
+ 	else if (params->auth_alg & WPA_AUTH_ALG_FT)
+ 		type = NL80211_AUTHTYPE_FT;
+ 	else
+-		goto nla_put_failure;
++		type = NL80211_AUTHTYPE_OPEN_SYSTEM;
+ 	wpa_printf(MSG_DEBUG, "  * Auth Type %d", type);
+ 	NLA_PUT_U32(msg, NL80211_ATTR_AUTH_TYPE, type);
+ 	if (params->local_state_change) {
+@@ -4744,22 +4747,28 @@ static int wpa_driver_nl80211_connect(
+ 	else if (params->auth_alg & WPA_AUTH_ALG_FT)
+ 		type = NL80211_AUTHTYPE_FT;
+ 	else
+-		goto nla_put_failure;
++		type = NL80211_AUTHTYPE_OPEN_SYSTEM;
+ 
+ 	wpa_printf(MSG_DEBUG, "  * Auth Type %d", type);
+ 	NLA_PUT_U32(msg, NL80211_ATTR_AUTH_TYPE, type);
+ 
+ skip_auth_type:
+-	if (params->wpa_ie && params->wpa_ie_len) {
+-		enum nl80211_wpa_versions ver;
++	if (params->wpa_ie && params->wpa_ie_len &&
++	    params->key_mgmt_suite != KEY_MGMT_NONE) {
++		enum nl80211_wpa_versions ver = 0;
+ 
+ 		if (params->wpa_ie[0] == WLAN_EID_RSN)
+ 			ver = NL80211_WPA_VERSION_2;
+-		else
++		else if (params->wpa_ie[0] == WLAN_EID_VENDOR_SPECIFIC &&
++			 params->wpa_ie_len >= 6 &&
++			 params->wpa_ie[2] == 0x00 && params->wpa_ie[3] == 0x50 &&
++			 params->wpa_ie[4] == 0xf2 && params->wpa_ie[5] == 0x01)
+ 			ver = NL80211_WPA_VERSION_1;
+ 
+-		wpa_printf(MSG_DEBUG, "  * WPA Version %d", ver);
+-		NLA_PUT_U32(msg, NL80211_ATTR_WPA_VERSIONS, ver);
++		if (ver) {
++			wpa_printf(MSG_DEBUG, "  * WPA Version %d", ver);
++			NLA_PUT_U32(msg, NL80211_ATTR_WPA_VERSIONS, ver);
++		}
+ 	}
+ 
+ 	if (params->pairwise_suite != CIPHER_NONE) {
+@@ -6438,49 +6447,8 @@ done:
+ static int nl80211_disable_11b_rates(struct wpa_driver_nl80211_data *drv,
+ 				     int ifindex, int disabled)
+ {
+-	struct nl_msg *msg;
+-	struct nlattr *bands, *band;
+-	int ret;
+-
+-	msg = nlmsg_alloc();
+-	if (!msg)
+-		return -1;
+-
+-	genlmsg_put(msg, 0, 0, genl_family_get_id(drv->nl80211), 0, 0,
+-		    NL80211_CMD_SET_TX_BITRATE_MASK, 0);
+-	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, ifindex);
+-
+-	bands = nla_nest_start(msg, NL80211_ATTR_TX_RATES);
+-	if (!bands)
+-		goto nla_put_failure;
+-
+-	/*
+-	 * Disable 2 GHz rates 1, 2, 5.5, 11 Mbps by masking out everything
+-	 * else apart from 6, 9, 12, 18, 24, 36, 48, 54 Mbps from non-MCS
+-	 * rates. All 5 GHz rates are left enabled.
+-	 */
+-	band = nla_nest_start(msg, NL80211_BAND_2GHZ);
+-	if (!band)
+-		goto nla_put_failure;
+-	if (disabled)
+-		NLA_PUT(msg, NL80211_TXRATE_LEGACY, 8,
+-			    "\x0c\x12\x18\x24\x30\x48\x60\x6c");
+-	nla_nest_end(msg, band);
+-
+-	nla_nest_end(msg, bands);
+-
+-	ret = send_and_recv_msgs(drv, msg, NULL, NULL);
+-	msg = NULL;
+-	if (ret) {
+-		wpa_printf(MSG_DEBUG, "nl80211: Set TX rates failed: ret=%d "
+-			   "(%s)", ret, strerror(-ret));
+-	}
+-
+-	return ret;
+-
+-nla_put_failure:
+-	nlmsg_free(msg);
+-	return -1;
++	/* Do not disable 802.11b rates as this breaks association on legacy & modern APs */
++	return 0;
+ }
+ 
+ 
+@@ -6745,11 +6713,23 @@ static int nl80211_flush_pmkid(void *priv)
+ }
+ 
+ 
++static const u8 * wpa_driver_nl80211_get_mac_addr(void *priv)
++{
++	struct i802_bss *bss = priv;
++	if (bss && bss->drv) {
++		if (is_zero_ether_addr(bss->drv->addr))
++			linux_get_ifhwaddr(bss->drv->ioctl_sock, bss->ifname, bss->drv->addr);
++		return bss->drv->addr;
++	}
++	return NULL;
++}
++
+ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.name = "nl80211",
+ 	.desc = "Linux nl80211/cfg80211",
+ 	.get_bssid = wpa_driver_nl80211_get_bssid,
+ 	.get_ssid = wpa_driver_nl80211_get_ssid,
++	.get_mac_addr = wpa_driver_nl80211_get_mac_addr,
+ 	.set_key = wpa_driver_nl80211_set_key,
+ 	.scan2 = wpa_driver_nl80211_scan,
+ 	.get_scan_results2 = wpa_driver_nl80211_get_scan_results,
+diff --git a/wpa_supplicant/Android.mk b/wpa_supplicant/Android.mk
+index 255206d..582c0d2 100644
+--- a/wpa_supplicant/Android.mk
++++ b/wpa_supplicant/Android.mk
+@@ -31,6 +31,10 @@ include $(LOCAL_PATH)/.config
+ # To ignore possible wrong network configurations
+ L_CFLAGS = -DWPA_IGNORE_CONFIG_ERRORS
+ 
++ifeq ($(BOARD_WPA_SUPPLICANT_PRIVATE_LIB),lib_driver_cmd_ath6kl)
++L_CFLAGS += -DCONFIG_DRIVER_NL80211_NO_SME
++endif
++
+ # Set Android log name
+ L_CFLAGS += -DANDROID_LOG_NAME=\"wpa_supplicant\"
+ 
+@@ -1408,6 +1412,9 @@ LOCAL_STATIC_LIBRARIES := libCustomWifi
+ endif
+ ifneq ($(BOARD_WPA_SUPPLICANT_PRIVATE_LIB),)
+ LOCAL_STATIC_LIBRARIES += $(BOARD_WPA_SUPPLICANT_PRIVATE_LIB)
++ifeq ($(BOARD_WPA_SUPPLICANT_PRIVATE_LIB),lib_driver_cmd_ath6kl)
++L_CFLAGS += -DCONFIG_DRIVER_NL80211_NO_SME
++endif
+ endif
+ LOCAL_SHARED_LIBRARIES := libc libcutils libcrypto libssl
+ ifdef CONFIG_DRIVER_NL80211
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 698660c..e76ca18 100755
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -1349,7 +1349,8 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
+ 
+ #ifdef CONFIG_P2P
+ 	if (wpa_s->global->p2p &&
+-	    (wpa_s->drv_flags & WPA_DRIVER_FLAGS_P2P_CAPABLE))
++	    (wpa_s->drv_flags & WPA_DRIVER_FLAGS_P2P_CAPABLE) &&
++	    wpa_s->current_ssid && wpa_s->current_ssid->p2p_group)
+ 		params.p2p = 1;
+ #endif /* CONFIG_P2P */
+ 
+@@ -2001,22 +2002,20 @@ int wpa_supplicant_driver_init(struct wpa_supplicant *wpa_s)
+ {
+ 	static int interface_count = 0;
+ 
++	const u8 *addr = wpa_drv_get_mac_addr(wpa_s);
++	if (addr)
++		os_memcpy(wpa_s->own_addr, addr, ETH_ALEN);
++
+ 	if (wpa_s->driver->send_eapol) {
+-		const u8 *addr = wpa_drv_get_mac_addr(wpa_s);
+-		if (addr)
+-			os_memcpy(wpa_s->own_addr, addr, ETH_ALEN);
++		/* nothing */
+ 	} else if (!(wpa_s->drv_flags &
+ 		     WPA_DRIVER_FLAGS_P2P_DEDICATED_INTERFACE)) {
+ 		wpa_s->l2 = l2_packet_init(wpa_s->ifname,
+-					   wpa_drv_get_mac_addr(wpa_s),
++					   wpa_s->own_addr,
+ 					   ETH_P_EAPOL,
+ 					   wpa_supplicant_rx_eapol, wpa_s, 0);
+ 		if (wpa_s->l2 == NULL)
+ 			return -1;
+-	} else {
+-		const u8 *addr = wpa_drv_get_mac_addr(wpa_s);
+-		if (addr)
+-			os_memcpy(wpa_s->own_addr, addr, ETH_ALEN);
+ 	}
+ 
+ 	if (wpa_s->l2 && l2_packet_get_own_addr(wpa_s->l2, wpa_s->own_addr)) {
+-- 
+2.56.0
+

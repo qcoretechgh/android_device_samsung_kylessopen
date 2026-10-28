@@ -80,6 +80,18 @@ bin/netmgrd
 bin/qmuxd
 bin/rmt_storage
 lib/libaudioeq.so
+lib/hw/audio.primary.msm7x27a.so
+lib/libsamsungSoundbooster.so
+lib/libmvsechocanceler.so
+lib/libsamsungRecord.so
+lib/lib_Samsung_SB_AM_for_ICS_v03005.so
+lib/libcontrolcsc.so
+lib/lib_SamsungRec_V01005.so
+lib/lib_Samsung_Resampler.so
+lib/libmvs.so
+lib/libmvsclient.so
+lib/libsamsungDiamondVoice.so
+lib/libsnd.so
 lib/libauth.so
 lib/libcm.so
 lib/libdiag.so
@@ -120,4 +132,5 @@ lib/hw/sensors.default.so
 bin/hostapd
 etc/firmware/ath6k/AR6003/hw2.1.1/athtcmd_ram.bin
 etc/firmware/ath6k/AR6003/hw2.1.1/bdata.bin
+etc/firmware/ath6k/AR6003/hw2.1.1/fw-3.bin
 etc/firmware/ath6k/AR6003/hw2.1.1/fw-4.bin

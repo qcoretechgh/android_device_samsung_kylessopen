@@ -1,0 +1,27 @@
+From 636ac3d7484983825521a4994ee412dbff509ec6 Mon Sep 17 00:00:00 2001
+From: Builder <builder@example.com>
+Date: Wed, 28 Oct 2026 12:18:27 +0200
+Subject: [PATCH] SoftapController: do not fail fwReloadSoftap when fwpath is
+ null
+
+Change-Id: I60abffec2b375fc3047713e3bdb9ae091df273a6
+---
+ SoftapController.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/SoftapController.cpp b/SoftapController.cpp
+index 820811f..a4661b3 100644
+--- a/SoftapController.cpp
++++ b/SoftapController.cpp
+@@ -453,7 +453,7 @@ int SoftapController::fwReloadSoftap(int argc, char *argv[])
+         fwpath = (char *)wifi_get_fw_path(WIFI_GET_FW_PATH_STA);
+     }
+     if (!fwpath)
+-        return -1;
++        return 0;
+ #ifdef HAVE_HOSTAPD
+     ret = wifi_change_fw_path((const char *)fwpath);
+ #else
+-- 
+2.56.0
+

@@ -1,0 +1,40 @@
+From a0e5481b00c6514ef86727db027a872db59079f3 Mon Sep 17 00:00:00 2001
+From: Builder <builder@example.com>
+Date: Wed, 28 Oct 2026 12:18:27 +0200
+Subject: [PATCH] cutils: define ALOG compatibility macros
+
+Change-Id: I091703d1a801f87fff96893df1487c67848c525d
+---
+ include/cutils/log.h | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/include/cutils/log.h b/include/cutils/log.h
+index 42d73829..63ab5a35 100644
+--- a/include/cutils/log.h
++++ b/include/cutils/log.h
+@@ -475,6 +475,22 @@ int __android_log_buf_write(int bufID, int prio, const char *tag, const char *te
+ int __android_log_buf_print(int bufID, int prio, const char *tag, const char *fmt, ...);
+ 
+ 
++#ifndef ALOGV
++#define ALOGV LOGV
++#define ALOGV_IF LOGV_IF
++#define ALOGD LOGD
++#define ALOGD_IF LOGD_IF
++#define ALOGI LOGI
++#define ALOGI_IF LOGI_IF
++#define ALOGW LOGW
++#define ALOGW_IF LOGW_IF
++#define ALOGE LOGE
++#define ALOGE_IF LOGE_IF
++#define ALOG_ASSERT LOG_ASSERT
++#define ALOG_ALWAYS_FATAL_IF LOG_ALWAYS_FATAL_IF
++#define ALOG_ALWAYS_FATAL LOG_ALWAYS_FATAL
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif
+-- 
+2.56.0
+

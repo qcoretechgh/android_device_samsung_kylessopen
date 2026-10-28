@@ -11,7 +11,6 @@ persist.call_recording.enabled=1
 # Dalvik
 dalvik.vm.checkjni=0
 dalvik.vm.dexopt-data-only=0
-dalvik.vm.dexopt-flags=v=a,o=v,m=y,u=y
 dalvik.vm.execution-mode=int:jit
 
 # Display
@@ -29,6 +28,7 @@ ro.ksm.default=1
 
 # Qualcomm
 com.qc.hardware=true
+ro.board.platform=msm7627a
 ro.vendor.extension_library=/system/lib/libqc-opt.so
 
 # Telephony
@@ -55,6 +55,9 @@ telephony.lteOnCdmaDevice=false
 persist.radio.multisim.config=dsds
 persist.dsds.enabled=true
 ro.multi.rild=false
+
+# Root
+persist.sys.root_access=3
 
 # USB
 persist.sys.usb.config=mtp,adb

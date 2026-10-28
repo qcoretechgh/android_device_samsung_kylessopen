@@ -1,0 +1,49 @@
+From d60119f551cb1a540106e38d8246d3a6a7eb547b Mon Sep 17 00:00:00 2001
+From: Builder <builder@example.com>
+Date: Wed, 28 Oct 2026 12:18:27 +0200
+Subject: [PATCH] bluedroid: support bccmd daemon for CSR bluetooth chips
+
+Change-Id: I11e96940e2208d5352125bfc7172fb6a02cae68d
+---
+ bluedroid/bluetooth.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/bluedroid/bluetooth.c b/bluedroid/bluetooth.c
+index 6440d99..0dbce0a 100644
+--- a/bluedroid/bluetooth.c
++++ b/bluedroid/bluetooth.c
+@@ -154,11 +154,16 @@ int bt_enable() {
+ 
+     if (set_bluetooth_power(1) < 0) goto out;
+ 
+-    LOGI("Starting hciattach daemon");
+-    if (property_set("ctl.start", "hciattach") < 0) {
+-        LOGE("Failed to start hciattach");
+-        set_bluetooth_power(0);
+-        goto out;
++    if (access("/system/bin/bccmd", X_OK) == 0) {
++        LOGI("Starting bccmd daemon");
++        property_set("ctl.start", "bccmd");
++    } else {
++        LOGI("Starting hciattach daemon");
++        if (property_set("ctl.start", "hciattach") < 0) {
++            LOGE("Failed to start hciattach");
++            set_bluetooth_power(0);
++            goto out;
++        }
+     }
+ 
+     // Try for 10 seconds, this can only succeed once hciattach has sent the
+@@ -225,6 +230,9 @@ int bt_disable() {
+         LOGE("Error stopping hciattach");
+         goto out;
+     }
++    if (access("/system/bin/bccmd", X_OK) == 0) {
++        property_set("ctl.stop", "bccmd");
++    }
+ 
+     if (set_bluetooth_power(0) < 0) {
+         goto out;
+-- 
+2.56.0
+

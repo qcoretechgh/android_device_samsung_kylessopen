@@ -25,8 +25,6 @@ TARGET_ARCH_VARIANT_CPU := cortex-a5
 TARGET_CPU_VARIANT := cortex-a5
 ARCH_ARM_HAVE_NEON := true
 ARCH_ARM_HAVE_TLS_REGISTER := true
-TARGET_GLOBAL_CFLAGS += -mtune=cortex-a5 -mfpu=neon-vfpv4 -mfloat-abi=softfp
-TARGET_GLOBAL_CPPFLAGS += -mtune=cortex-a5 -mfpu=neon-vfpv4 -mfloat-abi=softfp
 TARGET_BOARD_PLATFORM := msm7x27a
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno200
 BOARD_USES_ADRENO_200 := true
@@ -71,7 +69,8 @@ COMMON_GLOBAL_CFLAGS += -DQCOM_NO_SECURE_PLAYBACK
 # Audio
 TARGET_QCOM_AUDIO_VARIANT := caf
 BOARD_USES_LEGACY_ALSA_AUDIO := true
-COMMON_GLOBAL_CFLAGS += -DNO_TUNNELED_SOURCE
+COMMON_GLOBAL_CFLAGS += -DNO_TUNNELED_SOURCE -DHAVE_FM_RADIO
+BOARD_USE_SAMSUNG_SEPARATEDSTREAM := true
 
 # PowerHAL
 TARGET_USES_CM_POWERHAL := true
@@ -102,10 +101,6 @@ WIFI_DRIVER_MODULE_PATH := "/system/lib/modules/ath6kl_sdio.ko"
 WIFI_DRIVER_MODULE_NAME := "ath6kl_sdio"
 WIFI_EXT_MODULE_PATH := "/system/lib/modules/cfg80211.ko"
 WIFI_EXT_MODULE_NAME := "cfg80211"
-WIFI_TEST_INTERFACE := "sta"
-WIFI_DRIVER_FW_PATH_STA := "sta"
-WIFI_DRIVER_FW_PATH_AP  := "ap"
-WIFI_DRIVER_FW_PATH_P2P := "p2p"
 
 # Bluetooth
 BOARD_HAVE_BLUETOOTH := true
@@ -134,7 +129,7 @@ BOARD_LPM_BOOT_ARGUMENT_VALUE := batt
 
 # Recovery
 TARGET_RECOVERY_INITRC := device/samsung/kylessopen/recovery/init.rc
-TARGET_RECOVERY_FSTAB := device/samsung/kylessopen/ramdisk/fstab.qcom
+TARGET_RECOVERY_FSTAB := device/samsung/kylessopen/recovery/recovery.fstab
 BOARD_HAS_NO_SELECT_BUTTON := true
 BOARD_CUSTOM_RECOVERY_KEYMAPPING := ../../device/samsung/kylessopen/recovery/recovery_keys.c
 TARGET_USE_CUSTOM_LUN_FILE_PATH := /sys/devices/platform/msm_hsusb/gadget/lun%d/file
@@ -145,3 +140,5 @@ BOARD_HAS_SDCARD_INTERNAL := true
 BOARD_HAS_DOWNLOAD_MODE := true
 BOARD_USES_MMCUTILS := true
 BOARD_HAS_NO_MISC_PARTITION := true
+TARGET_OTA_ASSERT_DEVICE := kylessopen,kyleopen,kylexx,GT-S7562,s7562
+

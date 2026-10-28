@@ -166,8 +166,8 @@ static struct hw_module_methods_t lights_module_methods = {
 
 struct hw_module_t HAL_MODULE_INFO_SYM = {
      tag: HARDWARE_MODULE_TAG,
-     module_api_version: 1,
-     hal_api_version: 0,
+     version_major: 1,
+     version_minor: 0,
      id: LIGHTS_HARDWARE_MODULE_ID,
      name: "lights Module",
      author: "Kolja Dummann <k.dummann@gmail.com>",
