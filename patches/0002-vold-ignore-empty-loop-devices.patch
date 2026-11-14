@@ -1,0 +1,27 @@
+diff --git a/DirectVolume.cpp b/DirectVolume.cpp
+index c4a19e7..28bb001 100644
+--- a/DirectVolume.cpp
++++ b/DirectVolume.cpp
+@@ -84,6 +84,22 @@ void DirectVolume::handleVolumeUnshared() {
+ int DirectVolume::handleBlockEvent(NetlinkEvent *evt) {
+     const char *dp = evt->findParam("DEVPATH");
+ 
++    if (!strncmp(dp, "/devices/virtual/block/loop", 27) &&
++        evt->getAction() == NetlinkEvent::NlActionAdd) {
++        char size_path[255];
++        FILE *fp;
++        unsigned long long sz = 0;
++        snprintf(size_path, sizeof(size_path), "/sys%s/size", dp);
++        if ((fp = fopen(size_path, "r"))) {
++            fscanf(fp, "%llu", &sz);
++            fclose(fp);
++        }
++        if (sz == 0) {
++            errno = ENODEV;
++            return -1;
++        }
++    }
++
+     PathCollection::iterator  it;
+     for (it = mPaths->begin(); it != mPaths->end(); ++it) {
+         if (!strncmp(dp, *it, strlen(*it))) {

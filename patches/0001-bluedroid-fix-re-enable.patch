@@ -1,0 +1,127 @@
+diff --git a/bluedroid/bluetooth.c b/bluedroid/bluetooth.c
+index d7dedcf..5df3c9d 100644
+--- a/bluedroid/bluetooth.c
++++ b/bluedroid/bluetooth.c
+@@ -18,6 +18,8 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
++#include <stdlib.h>
++#include <string.h>
+ #include <sys/ioctl.h>
+ #include <sys/socket.h>
+ #include <sys/types.h>
+@@ -146,12 +148,34 @@ static inline int create_hci_sock() {
+     return sk;
+ }
+ 
++static void stop_hciattach() {
++    char svc_state[PROPERTY_VALUE_MAX];
++    int i;
++
++    LOGI("Stopping hciattach deamon");
++    if (property_set("ctl.stop", "hciattach") < 0) {
++        LOGE("Error stopping hciattach");
++        return;
++    }
++    for (i = 0; i < 20; i++) {
++        if (property_get("init.svc.hciattach", svc_state, "") > 0 &&
++            strcmp(svc_state, "running") != 0) {
++            break;
++        }
++        usleep(50000);
++    }
++}
++
+ int bt_enable() {
+     LOGV(__FUNCTION__);
+ 
+     int ret = -1;
+     int hci_sock = -1;
+     int attempt;
++    int dev_present = 0;
++    struct hci_dev_info dev_info;
++
++    stop_hciattach();
+ 
+     if (set_bluetooth_power(1) < 0) goto out;
+ 
+@@ -162,20 +186,50 @@ int bt_enable() {
+         goto out;
+     }
+ 
+-    // Try for 10 seconds, this can only succeed once hciattach has sent the
+-    // firmware and then turned on hci device via HCIUARTSETPROTO ioctl
+-    for (attempt = 1000; attempt > 0;  attempt--) {
++    // Wait up to 15 seconds for hciattach to register hci0, then bring it up
++    for (attempt = 300; attempt > 0; attempt--) {
+         hci_sock = create_hci_sock();
+-        if (hci_sock < 0) goto out;
++        if (hci_sock < 0) {
++            stop_hciattach();
++            set_bluetooth_power(0);
++            goto out;
++        }
+ 
+-        if (!ioctl(hci_sock, HCIDEVUP, HCI_DEV_ID)) {
+-            break;
++        if (!dev_present) {
++            memset(&dev_info, 0, sizeof(dev_info));
++            dev_info.dev_id = HCI_DEV_ID;
++            if (ioctl(hci_sock, HCIGETDEVINFO, (void *)&dev_info) == 0) {
++                if (hci_test_bit(HCI_UP, &dev_info.flags)) {
++                    break;
++                }
++                dev_present = 1;
++                close(hci_sock);
++                hci_sock = -1;
++                usleep(50000);  // let hciattach/BCSP settle before HCIDEVUP
++                continue;
++            }
++        } else {
++            if (!ioctl(hci_sock, HCIDEVUP, HCI_DEV_ID)) {
++                break;
++            }
++            if (errno == EALREADY) {
++                memset(&dev_info, 0, sizeof(dev_info));
++                dev_info.dev_id = HCI_DEV_ID;
++                if (ioctl(hci_sock, HCIGETDEVINFO, (void *)&dev_info) == 0 &&
++                    hci_test_bit(HCI_UP, &dev_info.flags)) {
++                    break;
++                }
++            }
++            LOGW("HCIDEVUP failed: %s (%d), retrying...", strerror(errno), errno);
+         }
++
+         close(hci_sock);
+-        usleep(10000);  // 10 ms retry delay
++        hci_sock = -1;
++        usleep(50000);  // 50 ms retry delay
+     }
+     if (attempt == 0) {
+         LOGE("%s: Timeout waiting for HCI device to come up", __FUNCTION__);
++        stop_hciattach();
+         set_bluetooth_power(0);
+         goto out;
+     }
+@@ -183,6 +237,7 @@ int bt_enable() {
+     LOGI("Starting bluetoothd deamon");
+     if (property_set("ctl.start", "bluetoothd") < 0) {
+         LOGE("Failed to start bluetoothd");
++        stop_hciattach();
+         set_bluetooth_power(0);
+         goto out;
+     }
+@@ -212,11 +267,7 @@ int bt_disable() {
+     if (hci_sock < 0) goto out;
+     ioctl(hci_sock, HCIDEVDOWN, HCI_DEV_ID);
+ 
+-    LOGI("Stopping hciattach deamon");
+-    if (property_set("ctl.stop", "hciattach") < 0) {
+-        LOGE("Error stopping hciattach");
+-        goto out;
+-    }
++    stop_hciattach();
+ 
+     if (set_bluetooth_power(0) < 0) {
+         goto out;
