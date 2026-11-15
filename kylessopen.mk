@@ -125,7 +125,8 @@ PRODUCT_COPY_FILES += \
 # Recovery
 PRODUCT_COPY_FILES += \
     device/samsung/kylessopen/recovery/postrecoveryboot.sh:recovery/root/sbin/postrecoveryboot.sh \
-    device/samsung/kylessopen/recovery/postrecoveryboot.sh:recovery/system/bin/postrecoveryboot.sh
+    device/samsung/kylessopen/recovery/postrecoveryboot.sh:recovery/system/bin/postrecoveryboot.sh \
+    device/samsung/kylessopen/Volume.db:system/etc/Volume.db
 
 # Enable repeatable keys in CWM
 PRODUCT_PROPERTY_OVERRIDES += \

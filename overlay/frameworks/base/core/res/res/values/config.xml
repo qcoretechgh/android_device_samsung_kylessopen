@@ -60,5 +60,7 @@
     
     <integer name="config_backKillTimeout">1500</integer>
 
-    
+    <bool name="config_wifi_ap_use_single_interface">true</bool>
+    <bool name="config_wifi_ap_firmware_reload">false</bool>
+
     </resources>
